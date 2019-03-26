@@ -13,39 +13,37 @@ class Updater(object):
         self.installed_version = installed_version
         self.token = token
     
-    def failed(self, error_word):
+    def failed(self, error_word, action):
         message = {}
         message['app_id'] = self.app_id
         message['status'] = 'failed'
         message['error_word'] = error_word
+        message['action'] = action
         return json.dumps(message)
 
-    def find_update(self):
+    def success(self, status, action):
         message = {}
         message['app_id'] = self.app_id
-        message['status'] = 'find_update'
-        message['new_version'] = self.latest_version
+        message['status'] = status
+        message['action'] = action
+        message['latest_version'] = self.latest_version
         message['installed_version'] = self.installed_version
         return json.dumps(message)
 
-    def updated(self):
-        message = {}
-        message['app_id'] = self.app_id
-        message['status'] = 'latest'
-        return json.dumps(message)
-
+    # TODO 需要根据online_service.update_service(self.app_id, self.token)的返回值True/False生成一个消息，参考check_update
     def run_update(self):
         online_service.update_service(self.app_id, self.token)
+        return 'TODO' # TODO
 
     def check_update(self):
         try:
             self.latest_version = online_service.get_version(self.app_id, self.token)
             if ( StrictVersion(self.latest_version) > StrictVersion(self.installed_version) ):
-                return self.find_update()
+                return self.success('find_update', 'check_update')
             else:
-                return self.updated()
+                return self.success('latest', 'check_update')
         except error.UpdaterException as e:
-            return self.failed(e.error_word)
+            return self.failed(e.error_word, 'check_update')
 
 
 def update_worker(ch, method, properties, body):
@@ -53,11 +51,11 @@ def update_worker(ch, method, properties, body):
     app_id = message_rec['app_id']
     action = message_rec['action']
     if action == 'check_update':
-        message_produce = updaters[app_id].check_update()
-        msgSender = queue.MsgProducer('UpdateResult')
-        msgSender.send_message(message_produce)
-        msgSender.close()
+        message_to_send = updaters[app_id].check_update()
+        feedback.send_message(message_to_send)
     if action == 'run_update':
+        message_to_send = updaters[app_id].run_update()
+        feedback.send_message(message_to_send)
         pass
     pass
 
@@ -71,5 +69,6 @@ token = validate.authToken()
 local_version = get_app_vers()
 for app in local_version:
     updaters[app] = Updater(app,local_version[app], token)
+feedback = queue.MsgProducer('UpdateResult')
 msg_handler = queue.MsgRecv('UpdateRequest', update_worker)
 msg_handler.chan.start_consuming()
