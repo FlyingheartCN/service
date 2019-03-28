@@ -1,7 +1,7 @@
 import requests
 import json
 from lib.config import config
-from lib.error import Error
+from lib.error import error
 import docker
 
 
@@ -19,7 +19,7 @@ def get_version(app_id, token):
     if err:
         return j['version']
     else:
-        raise Error.UpdaterException(err)
+        raise error.UpdaterException(err)
 
 
 def get_docker_name(app_id, token):
@@ -27,7 +27,7 @@ def get_docker_name(app_id, token):
     if err:
         return j['docker_name']
     else:
-        raise Error.UpdaterException(err)
+        raise error.UpdaterException(err)
 
 def update_system(token):
     pass

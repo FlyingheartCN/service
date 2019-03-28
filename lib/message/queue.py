@@ -13,7 +13,7 @@ class MsgConnect(object):
 class MsgRecv(MsgConnect):
     def __init__(self, _queue_name, _callback):
         super(MsgRecv, self).__init__(_queue_name)
-        self.chan.basic_consume(_callback, queue=_queue_name)
+        self.chan.basic_consume(on_message_callback=_callback, queue=self._queue_name)
 
 
 class MsgProducer(MsgConnect):
